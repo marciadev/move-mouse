@@ -1,0 +1,21 @@
+# Entorno virtual
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Configuración local (opcional, para que no subas tus ajustes personales)
+config.json
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Temporales de editores
+.vscode/
+.idea/
