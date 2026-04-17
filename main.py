@@ -139,7 +139,7 @@ class SettingsPanel(QFrame):
         self.circle_widget = circle_widget
         self.close_callback = close_callback
         self.setObjectName("SettingsPanel")
-        self.setFixedSize(250, 330)
+        self.setFixedSize(250, 360)
         
         self.accent_color = self.manager.get("loader_color")
         if self.accent_color == "rainbow": self.accent_color = "#ff7eb9"
@@ -185,6 +185,12 @@ class SettingsPanel(QFrame):
         self.sld_time.setRange(5, 120); self.sld_time.setValue(self.manager.get("interval_s"))
         self.sld_time.valueChanged.connect(self.update_time)
         self.layout.addWidget(self.sld_time)
+        
+        self.chk_autostart = QCheckBox("Iniciar con Windows 🚀")
+        self.chk_autostart.setChecked(self.manager.get("auto_start"))
+        self.chk_autostart.stateChanged.connect(self.update_autostart)
+        self.layout.addWidget(self.chk_autostart)
+        
         self.layout.addStretch()
         
         self.update_panel_styles()
@@ -221,6 +227,9 @@ class SettingsPanel(QFrame):
                 background: {accent}; border: 3px solid white; width: 20px; height: 20px; 
                 margin: -5px 0; border-radius: 10px; 
             }}
+            QCheckBox {{ color: #2d3436; font-weight: bold; font-size: 12px; }}
+            QCheckBox::indicator {{ width: 16px; height: 16px; border: 2px solid {accent}; border-radius: 4px; }}
+            QCheckBox::indicator:checked {{ background-color: {accent}; }}
         """)
         self.btn_close_x.setStyleSheet(f"background: {accent}; color: white; border-radius: 14px; border: none; font-weight: bold;")
         
@@ -240,6 +249,11 @@ class SettingsPanel(QFrame):
 
     def save_action(self, idx):
         modes = ["move", "click", "key"]; self.manager.set("action_type", modes[idx])
+
+    def update_autostart(self, state):
+        is_enabled = self.chk_autostart.isChecked()
+        self.manager.set("auto_start", is_enabled)
+        self.manager.toggle_auto_start(is_enabled)
 
 # --- VENTANA PRINCIPAL ---
 class MouseJigglerWidget(QMainWindow):
@@ -353,6 +367,7 @@ class MouseJigglerWidget(QMainWindow):
 
     def toggle_service(self):
         self.is_active = not self.is_active
+        self.update_tray_icon()
         if self.is_active:
             self.timer.start(100); self.btn_play.setStyleSheet(self.btn_play.styleSheet().replace("#22c55e", "#f97316"))
             self.set_btn_icon(self.btn_play, "stop", "white")
@@ -379,15 +394,33 @@ class MouseJigglerWidget(QMainWindow):
         if self.manager.get("minimize_on_close"): self.hide()
         else: QApplication.quit()
 
+    def update_tray_icon(self):
+        pix = QPixmap(64, 64); pix.fill(Qt.transparent)
+        p = QPainter(pix); p.setRenderHint(QPainter.Antialiasing); p.setRenderHint(QPainter.SmoothPixmapTransform)
+        if os.path.exists("logo.png"):
+            l_pix = QPixmap("logo.png").scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            p.drawPixmap((64 - l_pix.width()) // 2, (64 - l_pix.height()) // 2, l_pix)
+        else:
+            p.setBrush(QColor("#ff7eb9")); p.setPen(Qt.NoPen); p.drawEllipse(8, 8, 48, 48)
+        
+        badge_color = "#22c55e" if self.is_active else "#ff7eb9"
+        p.setBrush(QColor(badge_color)); p.setPen(QPen(Qt.white, 3))
+        p.drawEllipse(38, 38, 26, 26); p.end()
+        
+        if hasattr(self, 'tray'): self.tray.setIcon(QIcon(pix))
+
     def setup_tray(self):
         self.tray = QSystemTrayIcon(self)
         self.tray.setToolTip("Fluffy Paw Pro - Desactivado 💤")
-        if os.path.exists("logo.png"): self.tray.setIcon(QIcon("logo.png"))
-        else:
-            pix = QPixmap(64,64); pix.fill(Qt.transparent); p = QPainter(pix); p.setBrush(QColor("#ff7eb9")); p.drawEllipse(8,8,48,48); p.end()
-            self.tray.setIcon(QIcon(pix))
+        self.update_tray_icon()
         menu = QMenu(); menu.addAction("Mostrar", self.showNormal); menu.addAction("Salir", QApplication.quit)
         self.tray.setContextMenu(menu); self.tray.show()
+        self.tray.activated.connect(self.on_tray_activated)
+
+    def on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.Trigger:
+            self.showNormal()
+            self.activateWindow()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton: self.drag_pos = event.globalPosition().toPoint()
@@ -395,7 +428,8 @@ class MouseJigglerWidget(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
-    app.setStyleSheet("*{outline: none;}")
+    # Eliminamos el selector global * para evitar que rompa la capa de transparencia en los QGraphicsEffects
+    app.setStyleSheet("QMainWindow { background-color: transparent; }")
     window = MouseJigglerWidget()
     window.show()
     sys.exit(app.exec())
