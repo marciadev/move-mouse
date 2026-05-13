@@ -13,6 +13,32 @@ from PySide6.QtSvg import QSvgRenderer
 import pyautogui
 
 from settings_manager import SettingsManager
+import ctypes
+
+# Constantes de Windows para prevenir suspensión
+ES_CONTINUOUS = 0x80000000
+ES_SYSTEM_REQUIRED = 0x00000001
+ES_DISPLAY_REQUIRED = 0x00000002
+
+def set_keep_awake(keep_awake=True):
+    """ Previene que el sistema y la pantalla entren en suspensión """
+    if os.name == 'nt': # Solo para Windows
+        if keep_awake:
+            ctypes.windll.kernel32.SetThreadExecutionState(
+                ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
+            )
+        else:
+            ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+
+# --- FUNCIONES DE UTILIDAD ---
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta a los recursos, funciona para dev y PyInstaller """
+    try:
+        # PyInstaller crea una carpeta temporal y guarda la ruta en _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 # --- CONTENEDOR CIRCULAR CON SOPORTE DE VIDEO ---
 class CircularWidget(QWidget):
@@ -54,7 +80,7 @@ class CircularWidget(QWidget):
         self.play_video(self.video_list[self.current_video_idx])
 
     def play_video(self, filename):
-        path = os.path.join(os.getcwd(), filename)
+        path = resource_path(filename)
         if os.path.exists(path):
             self.player.setSource(QUrl.fromLocalFile(path))
             self.player.play()
@@ -273,8 +299,9 @@ class MouseJigglerWidget(QMainWindow):
         self.setMouseTracking(True); self.central_container.setMouseTracking(True)
         self.reset_ui_timer()
         
-        if os.path.exists("logo.png"):
-            app_icon = QIcon("logo.png")
+        logo_path = resource_path("logo.png")
+        if os.path.exists(logo_path):
+            app_icon = QIcon(logo_path)
             self.setWindowIcon(app_icon)
             QApplication.setWindowIcon(app_icon)
 
@@ -369,10 +396,12 @@ class MouseJigglerWidget(QMainWindow):
         self.is_active = not self.is_active
         self.update_tray_icon()
         if self.is_active:
+            set_keep_awake(True)
             self.timer.start(100); self.btn_play.setStyleSheet(self.btn_play.styleSheet().replace("#22c55e", "#f97316"))
             self.set_btn_icon(self.btn_play, "stop", "white")
             self.tray.setToolTip("Fluffy Paw Pro - Activo 🐾")
         else:
+            set_keep_awake(False)
             self.timer.stop(); self.btn_play.setStyleSheet(self.btn_play.styleSheet().replace("#f97316", "#22c55e"))
             self.set_btn_icon(self.btn_play, "play", "white")
             self.circle.set_progress(0); self.elapsed_ms = 0
@@ -397,15 +426,20 @@ class MouseJigglerWidget(QMainWindow):
     def update_tray_icon(self):
         pix = QPixmap(64, 64); pix.fill(Qt.transparent)
         p = QPainter(pix); p.setRenderHint(QPainter.Antialiasing); p.setRenderHint(QPainter.SmoothPixmapTransform)
-        if os.path.exists("logo.png"):
-            l_pix = QPixmap("logo.png").scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        logo_path = resource_path("logo.png")
+        if os.path.exists(logo_path):
+            l_pix = QPixmap(logo_path).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             p.drawPixmap((64 - l_pix.width()) // 2, (64 - l_pix.height()) // 2, l_pix)
         else:
+            # Fallback si no hay logo: círculo de color del tema
             p.setBrush(QColor("#ff7eb9")); p.setPen(Qt.NoPen); p.drawEllipse(8, 8, 48, 48)
         
+        # Dibujar el indicador de estado (badge)
         badge_color = "#22c55e" if self.is_active else "#ff7eb9"
         p.setBrush(QColor(badge_color)); p.setPen(QPen(Qt.white, 3))
-        p.drawEllipse(38, 38, 26, 26); p.end()
+        p.drawEllipse(36, 36, 26, 26) # Posicionado un poco mejor
+        p.end()
         
         if hasattr(self, 'tray'): self.tray.setIcon(QIcon(pix))
 

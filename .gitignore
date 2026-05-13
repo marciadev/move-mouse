@@ -1,21 +1,35 @@
-# Entorno virtual
+# --- Entorno Virtual ---
 venv/
 ENV/
 env/
+env.bak/
+venv.bak/
 
-# Python cache
+# --- Python Cache ---
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
+.coverage
+.cache/
 
-# Configuración local (opcional, para que no subas tus ajustes personales)
+# --- Compilación y Distribución (PyInstaller) ---
+build/
+dist/
+Package/
+*.spec
+
+# --- Configuración y Datos Locales ---
 config.json
+*.log
 
-# Archivos de sistema
+# --- Archivos de Sistema ---
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Temporales de editores
+# --- Herramientas de Desarrollo ---
 .vscode/
 .idea/
+.gemini/
