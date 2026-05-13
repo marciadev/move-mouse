@@ -8,6 +8,8 @@
 
 ## ✨ Características Principales
 
+<img width="273" height="273" alt="Captura de pantalla 2026-04-16 220710-modified" src="https://github.com/user-attachments/assets/a1b5ce34-8e78-4047-9461-452a8c2c0e47" />
+
 - **Gatito Dinámico**: Reemplaza las imágenes estáticas por una secuencia de videos cortos (.mp4) que rotan cada 5 segundos (Saludando, Jugando, Cazando y Durmiendo).
 - **Interfaz "Invisible"**: Los controles se desvanecen suavemente tras 3 segundos de inactividad, dejando solo al gatito en pantalla.
 - **Personalización Total**: Cambia el color de acento de la aplicación (Rosa, Azul, Verde, Naranja, Morado o Arcoíris) y todo el panel de ajustes se adaptará.
